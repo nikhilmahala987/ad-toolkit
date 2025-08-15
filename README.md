@@ -1,14 +1,18 @@
---------------------------------Python AD Toolkit---------------------------------------------
-    An advanced, modular post-exploitation toolkit for Active Directory environments, written in Python. This framework is designed to automate and streamline the attack lifecycle, from initial enumeration to defense evasion.
+# AD-Attack-Toolkit (Lab-Safe Starter)
 
-------------------------------------Getting Started-----------------------------------
+All-in-one, modular toolkit to automate **Active Directory** workflows:
+- Enumeration (LDAP/DNS/SMB)
+- (Future) Exploitation, Privilege Escalation, Persistence, OPSEC
 
-Prerequisites
-    1. Python 3.8+
-    2. pip for package management
+> **Use only in authorized environments.**
 
-Installation & Setup
-    1. Clone the repository:
-        -git clone https://github.com/nikhilmahala987/ad-toolkit
-        -cd python-ad-toolkit    
-    
+## Features (v0.1)
+- Menu-driven CLI with safety confirmations
+- LDAP enumeration (users, groups, computers) via `ldap3`
+- DNS SRV lookups for DC/GC/Kerberos discovery
+- SMB share listing (guest/anonymous) using Python `smbprotocol`
+
+## Install
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
