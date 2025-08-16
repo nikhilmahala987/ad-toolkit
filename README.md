@@ -6,7 +6,7 @@ All-in-one, modular toolkit to automate **Active Directory** workflows:
 
 > **Use only in authorized environments.**
 
-## Features:-
+## Features
 - Menu-driven CLI with safety confirmations
 - LDAP enumeration (users, groups, computers) via `ldap3`
 - DNS SRV lookups for DC/GC/Kerberos discovery
