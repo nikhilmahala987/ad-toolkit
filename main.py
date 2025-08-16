@@ -8,7 +8,7 @@ def clear_screen():
 
 def display_banner():
     print("="*60)
-    print("        Python Active Directory Post-Exploitation Toolkit")
+    print("       Python Active Directory Post-Exploitation Toolkit")
     print("="*60)
     print()
 
