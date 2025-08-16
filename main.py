@@ -1,6 +1,7 @@
 import os
 import sys
 from datetime import datetime
+from modules import enumeration
 def clear_screen():
     """Clears the terminal screen."""
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -14,7 +15,7 @@ def display_banner():
 def display_menu():
     """Displays the main menu options."""
     print("Main Menu:")
-    print("  1. Situational Awareness & Enumeration")
+    print("  1. Enumeration")
     print("  2. Credential Access")
     print("  3. Lateral Movement")
     print("  4. Privilege Escalation")
@@ -34,7 +35,7 @@ def main():
 
         if choice == '1':
             print("Executing Enumeration module...")
-            # placeholder: enumeration.run()
+            enumeration.run()
             input("Press Enter to continue...")
         elif choice == '2':
             print("Executing Credential Access module...")
