@@ -2,6 +2,7 @@ import os
 import sys
 from datetime import datetime
 from modules import enumeration
+from modules import credential_access
 def clear_screen():
     """Clears the terminal screen."""
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -39,7 +40,7 @@ def main():
             input("Press Enter to continue...")
         elif choice == '2':
             print("Executing Credential Access module...")
-            # placeholder: credential_access.run()
+            credential_access.run()
             input("Press Enter to continue...")
         elif choice == '3':
             print("Executing Lateral Movement module...")
