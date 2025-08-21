@@ -42,7 +42,7 @@ def main():
             print("Executing Credential Access module...")
             credential_access.run()
             input("Press Enter to continue...")
-        elif choice == '3':
+        elif choice == '3': 
             print("Executing Lateral Movement module...")
             # placeholder: lateral_movement.run()
             input("Press Enter to continue...")
