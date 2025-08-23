@@ -15,9 +15,9 @@ def _create_ldap_connection(target_ip, domain, username, password):
     user_dn = f'{domain}\\{username}'
 
     try:
-        conn = Connection(server, user=user_dn, password=password, authentication=NTLM, auto_bind=True)
+        connect  = Connection(server, user=user_dn, password=password, authentication=NTLM, auto_bind=True)
         print(f"[+] LDAP Bind Successful to {target_ip}")
-        return conn
+        return connect 
     except LDAPBindError as e:
         print(f"[!] LDAP Bind Failed: {e}")
         return None
@@ -65,21 +65,21 @@ def run():
             username = input("Enter Username: ")
             password = input("Enter Password: ")
             
-            conn = _create_ldap_connection(target_ip, domain, username, password)
-            if not conn:
+            connect = _create_ldap_connection(target_ip, domain, username, password)
+            if not connect:
                 input("\nPress Enter to continue...")
                 continue
             # This is important. We need the Base DN to search from the root of the domain.
             # The server info gives it to us so we don't have to guess.
-            base_dn = conn.server.info.other['defaultNamingContext'][0]
+            base_dn = connect.server.info.other['defaultNamingContext'][0]
             print(f"[*] Search Base DN set to: {base_dn}")
             
             if choice == '2':
-                enumerate_users(conn, base_dn)
+                enumerate_users(connect, base_dn)
             else:
-                enumerate_groups(conn, base_dn)
+                enumerate_groups(connect, base_dn)
             # Always clean up your connections.
-            conn.unbind()
+            connect.unbind()
 
         elif choice == '99':
             print("Returning to main menu...")
@@ -88,20 +88,20 @@ def run():
             print("Invalid choice. Please try again.")
             input("Press Enter to continue...")
 
-def enumerate_users(conn, base_dn):
+def enumerate_users(connect, base_dn):
     print("\n[+] Querying for all user accounts...")
     search_filter = '(objectClass=person)'
     attributes = ['sAMAccountName']#in search filter what we need
     
     try:
-        conn.search(search_base=base_dn,
+        connect.search(search_base=base_dn,
                     search_filter=search_filter,
                     attributes=attributes)
         
-        if conn.entries:
+        if connect.entries:
             print("\n[+] Found Users:")
             print("-" * 20)
-            for entry in conn.entries:
+            for entry in connect.entries:
                 print(entry.sAMAccountName)
             print("-" * 20)
         else:
@@ -111,20 +111,20 @@ def enumerate_users(conn, base_dn):
         print(f"\n[!] An error occurred during user search: {e}")
     input("\nPress Enter to continue...")
 
-def enumerate_groups(conn, base_dn):
+def enumerate_groups(connect, base_dn):
     print("\n[+] Querying for all domain groups...")
     search_filter = '(objectClass=group)'
     attributes = ['cn'] # 'cn' is the common name for groups
 
     try:
-        conn.search(search_base=base_dn,
+        connect.search(search_base=base_dn,
                     search_filter=search_filter,
                     attributes=attributes)
 
-        if conn.entries:
+        if connect.entries:
             print("\n[+] Found Groups:")
             print("-" * 40)
-            for entry in conn.entries:
+            for entry in connect.entries:
                 print(entry.cn)
             print("-" * 40)
         else:
