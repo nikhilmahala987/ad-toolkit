@@ -1,5 +1,6 @@
-import subprocess
-import shlex
+import ssl
+from ldap3 import Server, Connection, NTLM, ALL, SASL, KERBEROS
+from ldap3.core.exceptions import LDAPBindError
 
 try:
     import dns.resolver
@@ -7,41 +8,36 @@ except ImportError:
     print("[!] Module 'dnspython' not found. Please run 'pip install -r requirements.txt'")
     exit()
 
-def find_dc_ip(domain):
-    """
-    Finds the IP address of a domain controller using DNS SRV records.
-    """
-    print(f"\n[+] Attempting to find a Domain Controller for '{domain}'...")
-    srv_record = f'_ldap._tcp.dc._msdcs.{domain}'
+def _create_ldap_connection(target_ip, domain, username, password):
+    server_uri = f"ldap://{target_ip}"
+    server = Server(server_uri, get_info=ALL)
+    
+    user_dn = f'{domain}\\{username}'
+
     try:
-        # Resolve the SRV record
-        answers = dns.resolver.resolve(srv_record, 'SRV')
-        if not answers:
-            print("[!] No SRV records found.")
-            return None
-        
-        # Take the first record and get the hostname
-        hostname = str(answers[0].target).rstrip('.')
-        print(f"[*] Found DC hostname: {hostname}")
-
-        # Resolve the hostname to an IP address (A record)
-        ip_answers = dns.resolver.resolve(hostname, 'A')
-        if not ip_answers:
-            print(f"[!] Could not resolve hostname '{hostname}' to an IP.")
-            return None
-            
-        dc_ip = str(ip_answers[0])
-        print(f"[+] Resolved DC IP: {dc_ip}")
-        return dc_ip
-
-    except dns.resolver.NXDOMAIN:
-        print(f"[!] Error: The domain '{domain}' does not exist or could not be queried.")
-        return None
-    except dns.resolver.NoAnswer:
-        print(f"[!] Error: No SRV record found for '{srv_record}'. Is this a valid AD domain?")
+        conn = Connection(server, user=user_dn, password=password, authentication=NTLM, auto_bind=True)
+        print(f"[+] LDAP Bind Successful to {target_ip}")
+        return conn
+    except LDAPBindError as e:
+        print(f"[!] LDAP Bind Failed: {e}")
         return None
     except Exception as e:
-        print(f"[!] An unexpected DNS error occurred: {e}")
+        print(f"[!] An unexpected error occurred during LDAP connection: {e}")
+        return None
+
+def find_dc_ip(domain):
+    print(f"\n[+] Hunting for a Domain Controller for '{domain}' via DNS...")
+    srv_record = f'_ldap._tcp.dc._msdcs.{domain}'
+    try:
+        answers = dns.resolver.resolve(srv_record, 'SRV')
+        hostname = str(answers[0].target).rstrip('.')
+        print(f"[*] Found DC hostname: {hostname}. Now resolving its IP.")
+        ip_answers = dns.resolver.resolve(hostname, 'A')
+        dc_ip = str(ip_answers[0])
+        print(f"[+] Success! Resolved DC IP: {dc_ip}")
+        return dc_ip
+    except Exception as e:
+        print(f"[!] DNS resolution failed. Can't find the DC. Error: {e}")
         return None
 
 def run():
@@ -65,14 +61,25 @@ def run():
                 print("[!] Could not proceed without a Domain Controller IP.")
                 input("\nPress Enter to continue...")
                 continue
-            
+            print("[*] Got the DC IP. Now need credentials to talk to it.")
             username = input("Enter Username: ")
             password = input("Enter Password: ")
             
+            conn = _create_ldap_connection(target_ip, domain, username, password)
+            if not conn:
+                input("\nPress Enter to continue...")
+                continue
+            # This is important. We need the Base DN to search from the root of the domain.
+            # The server info gives it to us so we don't have to guess.
+            base_dn = conn.server.info.other['defaultNamingContext'][0]
+            print(f"[*] Search Base DN set to: {base_dn}")
+            
             if choice == '2':
-                enumerate_users(target_ip, domain, username, password)
+                enumerate_users(conn, base_dn)
             else:
-                enumerate_groups(target_ip, domain, username, password)
+                enumerate_groups(conn, base_dn)
+            # Always clean up your connections.
+            conn.unbind()
 
         elif choice == '99':
             print("Returning to main menu...")
@@ -81,52 +88,48 @@ def run():
             print("Invalid choice. Please try again.")
             input("Press Enter to continue...")
 
-def enumerate_users(target_ip, domain, username, password):
-    print("\nEnumerating domain users via LDAP...")
-    # Format for ldapsearch: domain/username:password@target_ip
-    credentials = f"{domain}/{username}:{password}"
-    base_dn = f"DC={domain.replace('.',',DC=')}"
-
-    # Using shlex.split to handle command-line arguments safely
-    command = [
-        "impacket-ldapsearch",
-        "-dc-ip", target_ip,
-        credentials,
-        "-base", base_dn,
-        "(objectClass=user)",
-        "sAMAccountName"
-    ]   
+def enumerate_users(conn, base_dn):
+    print("\n[+] Querying for all user accounts...")
+    search_filter = '(objectClass=person)'
+    attributes = ['sAMAccountName']#in search filter what we need
+    
     try:
-        result = subprocess.run(command, capture_output=True, text=True, check=True)
+        conn.search(search_base=base_dn,
+                    search_filter=search_filter,
+                    attributes=attributes)
         
-        print("\nCommand executed successfully. Output:")
-        print("-" * 40)
-        print(result.stdout)
-        print("-" * 40)
+        if conn.entries:
+            print("\n[+] Found Users:")
+            print("-" * 20)
+            for entry in conn.entries:
+                print(entry.sAMAccountName)
+            print("-" * 20)
+        else:
+            print("[-] No user accounts found with that query.")
+
     except Exception as e:
-        print(f"\n[!] An unexpected error occurred: {e}")
+        print(f"\n[!] An error occurred during user search: {e}")
     input("\nPress Enter to continue...")
 
-def enumerate_groups(target_ip, domain, username, password):
-    print("\n[+] Enumerating domain groups via LDAP...")
-    credentials = f"{domain}/{username}:{password}"
-    base_dn = f"DC={domain.replace('.',',DC=')}"
-    
-    command = [
-        "impacket-ldapsearch",
-        "-dc-ip", target_ip,
-        credentials,
-        "-base", base_dn,
-        "(objectClass=group)",
-        "cn"
-    ]
+def enumerate_groups(conn, base_dn):
+    print("\n[+] Querying for all domain groups...")
+    search_filter = '(objectClass=group)'
+    attributes = ['cn'] # 'cn' is the common name for groups
 
     try:
-        result = subprocess.run(command, capture_output=True, text=True, check=True)
-        print("\n[+] Command executed successfully. Output:")
-        print("-" * 40)
-        print(result.stdout)
-        print("-" * 40)
+        conn.search(search_base=base_dn,
+                    search_filter=search_filter,
+                    attributes=attributes)
+
+        if conn.entries:
+            print("\n[+] Found Groups:")
+            print("-" * 40)
+            for entry in conn.entries:
+                print(entry.cn)
+            print("-" * 40)
+        else:
+            print("[-] No groups found with that query.")
+        
     except Exception as e:
-        print(f"\n[!] An unexpected error occurred: {e}")
+        print(f"\n[!] An error occurred during group search: {e}")
     input("\nPress Enter to continue...")
