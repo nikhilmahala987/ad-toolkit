@@ -1,5 +1,5 @@
 import ssl
-from ldap3 import Server, Connection, NTLM, ALL, SASL, KERBEROS
+from ldap3 import Server, connection, NTLM, ALL, SASL, KERBEROS
 from ldap3.core.exceptions import LDAPBindError
 
 try:
@@ -15,7 +15,7 @@ def _create_ldap_connection(target_ip, domain, username, password):
     user_dn = f'{domain}\\{username}'
 
     try:
-        connect  = Connection(server, user=user_dn, password=password, authentication=NTLM, auto_bind=True)
+        connect  = connection(server, user=user_dn, password=password, authentication=NTLM, auto_bind=True)
         print(f"[+] LDAP Bind Successful to {target_ip}")
         return connect 
     except LDAPBindError as e:
@@ -44,8 +44,9 @@ def run():
     while True:
         print("\n--- Enumeration & Situational Awareness ---")
         print("1. Find Domain Controller")
-        print("2. Enumerate Domain Users (LDAP)")
-        print("3. Enumerate Domain Groups (LDAP)")
+        print("2. Enumerate Domain Users")
+        print("3. Enumerate Domain Groups")
+        print("4. Enumerate Domain Computers")
         print("99. Return to Main Menu")
 
         choice = input("Enter your choice: ")
@@ -54,7 +55,7 @@ def run():
             domain = input("Enter Target Domain (e.g., contoso.local): ")
             find_dc_ip(domain)
             input("\nPress Enter to continue...")
-        elif choice == '2' or choice == '3':
+        elif choice in ['2', '3', '4']:
             domain = input("Enter Target Domain (e.g., contoso.local): ")
             target_ip = find_dc_ip(domain)
             if not target_ip:
@@ -76,9 +77,10 @@ def run():
             
             if choice == '2':
                 enumerate_users(connect, base_dn)
-            else:
+            elif choice == '3':
                 enumerate_groups(connect, base_dn)
-            # Always clean up your connections.
+            elif choice == '4':
+                enumerate_computers(connect, base_dn)
             connect.unbind()
 
         elif choice == '99':
@@ -132,4 +134,24 @@ def enumerate_groups(connect, base_dn):
         
     except Exception as e:
         print(f"\n[!] An error occurred during group search: {e}")
+    input("\nPress Enter to continue...")
+
+def enumerate_computers(connect, base_dn):
+    print("\n[+] Querying for all computer accounts...")
+    search_filter = '(objectCategory=computer)'
+    attributes = ['dNSHostName']
+
+    try:
+        connect.search(search_base=base_dn, search_filter=search_filter, attributes=attributes)
+        if  connect.entries:
+            print("\n[+] Found Computers:")
+            print("-" * 40)
+            for entry in    connect.entries:
+                if 'dNSHostName' in entry:
+                    print(entry.dNSHostName)
+            print("-" * 40)
+        else:
+            print("[-] No computer accounts found with that query.")
+    except Exception as e:
+        print(f"\n[!] An error occurred during computer search: {e}")
     input("\nPress Enter to continue...")
