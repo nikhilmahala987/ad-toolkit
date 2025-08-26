@@ -4,7 +4,6 @@ from datetime import datetime
 from modules import enumeration
 from modules import credential_access
 def clear_screen():
-    """Clears the terminal screen."""
     os.system('cls' if os.name == 'nt' else 'clear')
 
 def display_banner():

