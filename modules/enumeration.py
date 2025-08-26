@@ -16,7 +16,7 @@ def _create_ldap_connection(target_ip, domain, username, password):
     server = Server(server_uri, get_info=ALL)
     user_dn = f'{domain}\\{username}'   
     try:
-        connect  = connection(server, user=user_dn, password=password, authentication=NTLM, auto_bind=True)
+        connect  = Connection(server, user=user_dn, password=password, authentication=NTLM, auto_bind=True)
         print(f"[+] LDAP Bind Successful to {target_ip}")
         return connect 
     except LDAPBindError as e:
@@ -142,7 +142,7 @@ def enumerate_users(connect, base_dn):
 def enumerate_groups(connect, base_dn):
     print("\n[+] Querying for all domain groups...")
     search_filter = '(objectClass=group)'
-    attributes = ['cn'] # 'cn' is the common name for groups
+    attributes = ['cn']
 
     try:
         connect.search(search_base=base_dn,

@@ -2,7 +2,7 @@
 
 All-in-one, modular toolkit to automate **Active Directory** workflows:
 - Enumeration (LDAP/DNS/SMB)
-- (Future) Exploitation, Privilege Escalation, Persistence, OPSEC
+- Exploitation, Privilege Escalation, Persistence, OPSEC
 
 > **Use only in authorized environments.**
 

@@ -25,7 +25,6 @@ def display_menu():
     print()
 
 def main():
-    """Main function to run the toolkit."""
     while True:
         clear_screen()
         display_banner()

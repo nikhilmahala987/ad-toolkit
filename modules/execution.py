@@ -5,7 +5,6 @@ def wmi_exec(target_ip, domain, username, password, command):
     
     credentials = f"{domain}/{username}:{password}@{target_ip}"
     
-    # We need to pass the command to wmiexec
     full_command = [
         "impacket-wmiexec",
         credentials,
@@ -15,8 +14,6 @@ def wmi_exec(target_ip, domain, username, password, command):
     print(f"[*] Running: {' '.join(full_command)}")
 
     try:
-        # We don't need to check for output here, just whether it succeeded.
-        # We'll run this in the background. For a real shell, we'd need a different approach.
         result = subprocess.run(full_command, capture_output=True, text=True, check=True)
         print("[+] Command executed successfully.")
         print("[*] Output:")
