@@ -2,7 +2,7 @@ import subprocess
 import shlex
 import os
 from datetime import datetime
-from modules import execution
+from modules import execution, enumeration
 
 def run():
     while True:
@@ -15,14 +15,20 @@ def run():
         choice = input("Enter your choice: ")
 
         if choice == '1':
-            target_ip = input("Enter Target IP (Domain Controller): ")
             domain = input("Enter Target Domain (e.g., contoso.local): ")
+            target_ip = enumeration.find_dc_ip(domain)
+            if not target_ip:
+                input("\n[!] Could not find DC. Press Enter to continue...")
+                continue
             username = input("Enter Username: ")
             password = input("Enter Password: ")
             kerberoast(target_ip, domain, username, password)
         elif choice == '2':
-            target_ip = input("Enter Target IP (Domain Controller): ")
             domain = input("Enter Target Domain (e.g., contoso.local): ")
+            target_ip = enumeration.find_dc_ip(domain)
+            if not target_ip:
+                input("\n[!] Could not find DC. Press Enter to continue...")
+                continue
             asrep_roast(target_ip, domain)
         elif choice == '3':
             dump_lsass()
